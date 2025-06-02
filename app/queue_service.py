@@ -17,7 +17,7 @@ class QueueService:
         self.queue_url = None
         self.queue_obj = None
         boto3_config = Config(
-            signature_version='v4', # SQS APIs typically use v4 signature
+            signature_version='v3',
             connect_timeout=5,
             read_timeout=10,
             retries={'max_attempts': 3},
@@ -33,20 +33,48 @@ class QueueService:
 
             )
         
-    
+    async def initialize_queue_with_client(self):
+        """Alternative initialization using SQS client."""
+        if self.queue_obj:
+            return
+            
+        sqs_client = self.sqs_resource.meta.client
+        
+        try:
+            # Try to get queue URL
+            response = sqs_client.get_queue_url(QueueName=self.queue_name)
+            self.queue_url = response['QueueUrl']
+            self.queue_obj = self.sqs_resource.Queue(self.queue_url)
+            logger.info(f"Found existing queue: {self.queue_url}")
+            
+        except sqs_client.exceptions.QueueDoesNotExist:
+            logger.warning(f"Queue '{self.queue_name}' does not exist, attempting to create...")
+            try:
+                # Create queue
+                response = sqs_client.create_queue(QueueName=self.queue_name)
+                self.queue_url = response['QueueUrl']
+                self.queue_obj = self.sqs_resource.Queue(self.queue_url)
+                logger.info(f"Queue '{self.queue_name}' created with URL: {self.queue_url}")
+            except Exception as create_error:
+                logger.error(f"Failed to create queue: {create_error}")
+                raise
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize queue: {e}")
+            raise
+
     async def initialize_queue(self):
         """Initializes and gets the queue URL for the client."""
         if self.queue_obj:
             return
         try:
             self.queue_obj = self.sqs_resource.get_queue_by_name(QueueName=self.queue_name)
-
+            self.queue_url = self.queue_obj.url
         except self.sqs_resource.meta.client.exceptions.QueueDoesNotExist:    
             logger.warning(f"Queue '{self.queue_name}' does not exist, attempting to create...")
-            response = self.sqs_resource.create_queue(QueueName=self.queue_name)
-            self.queue_url = response['QueueUrl']
+            self.queue_obj = self.sqs_resource.create_queue(QueueName=self.queue_name)
+            self.queue_url = self.queue_obj.url
             logger.info(f"Queue '{self.queue_name}' created with URL: {self.queue_url}")
-            
         except Exception as e:
             logger.error(f"Failed to initialize queue: {e}")
             raise
@@ -54,7 +82,7 @@ class QueueService:
     async def send_event(self, event_data: Dict[str, Any]) -> str:
         """Send event to SQS queue"""
         try:
-            await self.initialize_queue() # Ensure queue URL is set before sending
+            await self.initialize_queue_with_client() # Ensure queue URL is set before sending
             message_body = json.dumps({
                 **event_data,
                 "timestamp": event_data["timestamp"].isoformat() if isinstance(event_data["timestamp"], datetime) else event_data["timestamp"]
@@ -85,7 +113,7 @@ class QueueService:
     
     async def receive_events(self, max_messages: int = 10):
         """Receive events from SQS queue"""
-        await self.initialize_queue()
+        await self.initialize_queue_with_client()
         try:    
             response_messages = self.queue_obj.receive_messages(
                 MaxNumberOfMessages=max_messages,
