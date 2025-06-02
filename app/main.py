@@ -14,10 +14,11 @@ from app.schemas import EventCreate, EventResponse
 from app.queue_service import QueueService
 from app.worker import EventWorker
 from app.models import EventLog
+from app.config import settings
 
 logging.basicConfig(
     format="%(message)s",  # structlog formats the message, so we just want the message
-    level=logging.INFO,    # Set the minimum level you want to see (e.g., INFO, DEBUG)
+    level=settings.log_level,    # Set the minimum level you want to see (e.g., INFO, DEBUG)
     stream=sys.stdout      # Send output to the console
 )
 
@@ -56,9 +57,9 @@ async def lifespan(app: FastAPI):
     worker.stop_worker()
 
 app = FastAPI(
-    title="Event Processing Microservice",
-    description="AWS-focused microservice for processing application usage events",
-    version="1.0.0",
+    title=settings.app_name,
+    description=settings.app_description,
+    version=settings.app_version,
     lifespan=lifespan
 )
 

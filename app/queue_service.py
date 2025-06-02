@@ -1,39 +1,34 @@
 import os
 import boto3
 import json
-import asyncio
 import structlog
 from typing import Dict, Any
 from datetime import datetime
-from botocore.config import Config # Import Config
+from botocore.config import Config
+from app.config import settings
 
 
 logger = structlog.get_logger()
 
 class QueueService:
     def __init__(self):
-        self.aws_region = os.getenv("AWS_REGION", "us-east-1")
+        self.aws_region = settings.aws_region
         self.queue_name = "events-queue"
         self.queue_url = None
         self.queue_obj = None
-        self.elasticmq_endpoint_url = os.getenv("ELASTICMQ_ENDPOINT_URL", "http://localhost:9324")
-
         boto3_config = Config(
             signature_version='v4', # SQS APIs typically use v4 signature
             connect_timeout=5,
             read_timeout=10,
             retries={'max_attempts': 3},
-            # Explicitly set use_ssl to False if your endpoint is http (which it is)
-            # This can sometimes influence how requests are formed.
-            # While not directly solving HTTP method, it ensures proper client setup.ss
         )
         self.sqs_resource = boto3.resource(
             'sqs',
             region_name=self.aws_region,
-            endpoint_url=self.elasticmq_endpoint_url,
-            aws_access_key_id='test', # Dummy credentials for ElasticMQ
-            aws_secret_access_key='test', # Dummy credentials for ElasticMQ
-            use_ssl=False, # Explicitly setting use_ssl to False if using HTTP
+            endpoint_url=settings.elasticmq_endpoint_url,
+            aws_access_key_id=settings.aws_access_key_id,
+            aws_secret_access_key=settings.aws_secret_access_key,
+            use_ssl=False, 
             config=boto3_config
 
             )

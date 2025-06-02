@@ -11,25 +11,26 @@ class Settings(BaseSettings):
     
     # Application
     app_name: str = "Event Processing Microservice"
+    app_description: str = "A microservice for processing application usage events with AWS SQS and RDS."
     app_version: str = "1.0.0"
     debug: bool = False
     log_level: str = "INFO"
     
     # Database
-    database_url: str = "postgresql://postgres:abc123@localhost:5432/new_events_db"
+    # Default database URL, can be overridden by environment variable
+    database_url: str = os.getenv("DATABASE_URL")
     database_pool_size: int = 10
     database_max_overflow: int = 20
     
     # AWS Configuration
-    aws_region: str = "us-east-1"
-    aws_access_key_id: Optional[str] = None
-    aws_secret_access_key: Optional[str] = None
+    aws_region: str = os.getenv("AWS_REGION", "us-east-1")
+    aws_access_key_id: str = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str = os.getenv("AWS_SECRET_ACCESS_KEY")
     
     # SQS Configuration
-    # sdasd: str = "http://localhost:9325/events-queue"
-    # sqs_endpoint_url: Optional[str] = "http://localhost:9325"
-    # sqs_max_messages: int = 10
-    # sqs_wait_time_seconds: int = 20
+    elasticmq_endpoint_url: Optional[str] = os.getenv("ELASTICMQ_ENDPOINT_URL")
+    sqs_max_messages: int = 10
+    sqs_wait_time_seconds: int = 20
     
     # Worker Configuration
     worker_concurrency: int = 5

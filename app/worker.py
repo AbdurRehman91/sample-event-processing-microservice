@@ -1,12 +1,9 @@
 import asyncio
-import json
 import structlog
 from datetime import datetime, timezone
 from app.models import EventLog 
 from app.database import SessionLocal
 from app.queue_service import QueueService
-from app.schemas import EventCreate 
-from app.crud import create_db_event
 
 logger = structlog.get_logger()
 
